@@ -177,14 +177,23 @@ function diffMs(a, b) {
 }
 
 function ageToHuman(ms) {
+  const round1 = (n) => Math.round(n * 10) / 10;
+
+  // format number with no trailing ".0", and proper singular/plural
+  const fmt = (val, unitSingular) => {
+    const s = String(val).replace(/\.0$/, ''); // drop trailing .0
+    const num = parseFloat(s);
+    const unit = (num === 1) ? unitSingular : `${unitSingular}s`;
+    return `${s} ${unit}`;
+  };
+
   const days = ms / (1000 * 60 * 60 * 24);
   if (days < 7) {
-    // days, 1 decimal
-    return `${Math.round(days * 10) / 10}d`;
+    const d = round1(days);
+    return fmt(d, 'day');    // e.g., "6 days" or "0.5 days"
   }
-  // weeks, 1 decimal
-  const weeks = days / 7;
-  return `${Math.round(weeks * 10) / 10}w`;
+  const weeks = round1(days / 7);
+  return fmt(weeks, 'week'); // e.g., "8.5 weeks" or "1 week"
 }
 
 function mean(arr) {
