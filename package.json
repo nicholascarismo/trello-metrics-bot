@@ -1,0 +1,19 @@
+{
+  "name": "trello-metrics-bot",
+  "version": "1.0.0",
+  "description": "Slack Socket-Mode bot that reports Trello per-list metrics and card ages via /trellometrics.",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "NODE_ENV=development node index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@slack/bolt": "^3.18.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  }
+}
