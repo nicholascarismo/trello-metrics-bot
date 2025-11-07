@@ -331,34 +331,56 @@ async function buildMetricsReport() {
   };
 }
 
-function renderCardAgesBlocks(listName, rows) {
+// Returns an array of "pages", where each page is { text, blocks }
+// Each page stays safely under Slack's 50-block limit.
+// We use: header(1) + divider(1) + up to 22 cards * (section+divider=2) = 48 blocks/page.
+function renderCardAgesPages(listName, rows) {
   if (!rows.length) {
-    return [
-      ...blocksHeader(`${listName} — Card Ages`),
-      ...blocksDivider(),
-      ...blocksSectionMrkdwn('_No open cards on this list._')
+    return [{
+      text: `${listName} — Card Ages`,
+      blocks: [
+        ...blocksHeader(`${listName} — Card Ages`),
+        ...blocksDivider(),
+        ...blocksSectionMrkdwn('_No open cards on this list._')
+      ]
+    }];
+  }
+
+  // Helper: hard-cap title length to avoid extremely long mrkdwn fields
+  const cap = (s, max = 2800) => {
+    const str = String(s ?? '');
+    return str.length > max ? (str.slice(0, max - 1) + '…') : str;
+  };
+
+  const PAGE_CARD_LIMIT = 22; // 22 cards/page => 48 blocks total with header & divider
+
+  const pages = [];
+  for (let i = 0; i < rows.length; i += PAGE_CARD_LIMIT) {
+    const slice = rows.slice(i, i + PAGE_CARD_LIMIT);
+
+    const headerText = `${listName} — Card Ages${rows.length > PAGE_CARD_LIMIT ? ` (Page ${Math.floor(i / PAGE_CARD_LIMIT) + 1}/${Math.ceil(rows.length / PAGE_CARD_LIMIT)})` : ''}`;
+
+    const blocks = [
+      ...blocksHeader(headerText),
+      ...blocksDivider()
     ];
+
+    for (const r of slice) {
+      const age = ageToHuman(r.ageMs);
+      blocks.push({
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `• *${cap(r.title)}*\n_Age:_ ${age}`
+        }
+      });
+      blocks.push(...blocksDivider());
+    }
+
+    pages.push({ text: headerText, blocks });
   }
 
-  const blocks = [
-    ...blocksHeader(`${listName} — Card Ages`),
-    ...blocksDivider()
-  ];
-
-  // Each card gets its own section with a clear separator
-  for (const r of rows) {
-    const age = ageToHuman(r.ageMs);
-    blocks.push({
-      type: 'section',
-      text: {
-        type: 'mrkdwn',
-        text: `• *${r.title}*\n_Age:_ ${age}`
-      }
-    });
-    blocks.push(...blocksDivider());
-  }
-
-  return blocks;
+  return pages;
 }
 
 /* =========================
@@ -455,9 +477,11 @@ app.action('show_cards_for_list', async ({ ack, body, client }) => {
     const map = new Map(lists.map(l => [l.id, l.name]));
     const name = map.get(listId) || listId;
 
-    const metrics = await computeListMetrics(listId);
-    const blocks = renderCardAgesBlocks(name, metrics.cardRows);
-    await client.chat.postMessage({ channel, thread_ts, text: `${name} — card ages`, blocks });
+        const metrics = await computeListMetrics(listId);
+    const pages = renderCardAgesPages(name, metrics.cardRows);
+    for (const p of pages) {
+      await client.chat.postMessage({ channel, thread_ts, text: p.text, blocks: p.blocks });
+    }
   } catch (e) {
     console.error('show_cards_for_list failed:', e);
     await client.chat.postMessage({ channel, thread_ts, text: `❌ Failed: ${e?.message || e}` });
@@ -480,10 +504,12 @@ app.action('show_all_cards_all_lists', async ({ ack, body, client }) => {
     const map = new Map(lists.map(l => [l.id, l.name]));
 
     for (const listId of cfg.listIds) {
-      const name = map.get(listId) || listId;
+            const name = map.get(listId) || listId;
       const metrics = await computeListMetrics(listId);
-      const blocks = renderCardAgesBlocks(name, metrics.cardRows);
-      await client.chat.postMessage({ channel, thread_ts, text: `${name} — card ages`, blocks });
+      const pages = renderCardAgesPages(name, metrics.cardRows);
+      for (const p of pages) {
+        await client.chat.postMessage({ channel, thread_ts, text: p.text, blocks: p.blocks });
+      }
     }
   } catch (e) {
     console.error('show_all_cards_all_lists failed:', e);
