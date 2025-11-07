@@ -2,7 +2,6 @@ import 'dotenv/config';
 import fs from 'fs';
 import fsp from 'fs/promises';
 import path from 'path';
-import express from 'express';
 import boltPkg from '@slack/bolt';
 
 const { App } = boltPkg;
@@ -18,8 +17,7 @@ const {
 
   TRELLO_KEY,
   TRELLO_TOKEN,
-  TRELLO_BOARD_ID,         // Board that contains each teammate's To-Do list (as separate Lists)
-  PORT = 3000
+  TRELLO_BOARD_ID          // Board that contains each teammate's To-Do list (as separate Lists)
 } = process.env;
 
 function mustHave(name) {
@@ -75,19 +73,7 @@ app.error((e) => {
   console.error('⚠️ Bolt error:', e?.stack || e?.message || e);
 });
 
-/* =========================
-   Express HTTP (health & optional future webhooks)
-========================= */
-const server = express();
-server.use(express.json({ limit: '1mb' }));
 
-// Health / readiness
-server.get('/healthz', (_, res) => res.status(200).json({ ok: true, name: 'trello-metrics-bot' }));
-server.get('/readyz',  (_, res) => res.status(200).json({ ok: true }));
-
-server.listen(PORT, () => {
-  console.log(`[http] listening on :${PORT}`);
-});
 
 /* =========================
    Trello REST helpers
