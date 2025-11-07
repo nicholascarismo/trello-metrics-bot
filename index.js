@@ -295,7 +295,7 @@ async function buildMetricsReport() {
       type: 'section',
       text: {
         type: 'mrkdwn',
-        text: `*${r.name}*\n• Cards: *${r.count}*\n• Avg age: *${r.avg}*\n• Oldest: *${r.oldest}*`
+        text: `*${r.name}*\n• Current # of Cards: *${r.count}*\n• Average Card Age: *${r.avg}*\n• Oldest Card Age: *${r.oldest}*`
       },
       accessory: {
         type: 'button',
@@ -304,6 +304,9 @@ async function buildMetricsReport() {
         value: JSON.stringify({ listId: r.listId })
       }
     });
+
+    // visual separator between lists
+    blocks.push(...blocksDivider());
   }
 
   // Global button to show all cards across all lists
@@ -337,19 +340,22 @@ function renderCardAgesBlocks(listName, rows) {
     ];
   }
 
-  const fields = rows.map(r => ({
-    type: 'mrkdwn',
-    text: `*${r.title}*\n${ageToHuman(r.ageMs)}`
-  }));
-
   const blocks = [
     ...blocksHeader(`${listName} — Card Ages`),
     ...blocksDivider()
   ];
 
-  const chunks = chunk(fields, 10);
-  for (const ch of chunks) {
-    blocks.push({ type: 'section', fields: ch });
+  // Each card gets its own section with a clear separator
+  for (const r of rows) {
+    const age = ageToHuman(r.ageMs);
+    blocks.push({
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: `• *${r.title}*\n_Age:_ ${age}`
+      }
+    });
+    blocks.push(...blocksDivider());
   }
 
   return blocks;
