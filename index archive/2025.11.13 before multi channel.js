@@ -404,7 +404,7 @@ function renderCardAgesPages(listName, rows) {
 app.command('/trellometrics', async ({ ack, body, client }) => {
   await ack();
 
-  const channel = body.channel_id;
+  const channel = WATCH_CHANNEL_ID || body.channel_id;
   const text = (body.text || '').trim();
 
   try {
